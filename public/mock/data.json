@@ -6,7 +6,7 @@
       "width": 720,
       "height": 1280,
       "title": "视频标题 1",
-      "description": "这是一个示例视频描述 1"
+      "description": "点击可以播放视频描述 1"
     },
     {
       "type": "video",
@@ -14,7 +14,7 @@
       "width": 1280,
       "height": 720,
       "title": "视频标题 2",
-      "description": "这是一个示例视频描述 2"
+      "description": "点击可以播放视频描述 2"
     },
     {
       "type": "video",
@@ -22,7 +22,7 @@
       "width": 720,
       "height": 1280,
       "title": "视频标题 3",
-      "description": "这是一个示例视频描述 3"
+      "description": "点击可以播放视频描述 3"
     },
     {
       "type": "video",
@@ -30,7 +30,7 @@
       "width": 1280,
       "height": 720,
       "title": "视频标题 4",
-      "description": "这是一个示例视频描述 4"
+      "description": "点击可以播放视频描述 4"
     },
     {
       "type": "video",
@@ -38,7 +38,7 @@
       "width": 720,
       "height": 1280,
       "title": "视频标题 5",
-      "description": "这是一个示例视频描述 5"
+      "description": "点击可以播放视频描述 5"
     }
   ],
   "image": [
@@ -131,7 +131,7 @@
         "width": 720,
         "height": 1280,
         "title": "视频标题 6",
-        "description": "这是一个示例视频描述 6"
+        "description": "点击可以播放视频描述 6"
       },
       {
         "type": "video",
@@ -139,7 +139,7 @@
         "width": 1280,
         "height": 720,
         "title": "视频标题 7",
-        "description": "这是一个示例视频描述 7"
+        "description": "点击可以播放视频描述 7"
       },
       {
         "type": "video",
@@ -147,7 +147,7 @@
         "width": 720,
         "height": 1280,
         "title": "视频标题 8",
-        "description": "这是一个示例视频描述 8"
+        "description": "点击可以播放视频描述 8"
       },
       {
         "type": "video",
@@ -155,7 +155,7 @@
         "width": 1280,
         "height": 720,
         "title": "视频标题 9",
-        "description": "这是一个示例视频描述 9"
+        "description": "点击可以播放视频描述 9"
       },
       {
         "type": "video",
@@ -163,7 +163,7 @@
         "width": 720,
         "height": 1280,
         "title": "视频标题 10",
-        "description": "这是一个示例视频描述 10"
+        "description": "点击可以播放视频描述 10"
       }
     ],
     "image": [

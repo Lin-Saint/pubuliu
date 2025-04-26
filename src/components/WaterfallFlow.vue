@@ -1,5 +1,5 @@
 <template>
-	<div class="waterfall-container">
+	<div class="waterfall-container" ref="scrollContainer">
 		<!-- 自定义瀑布流骨架屏 -->
 		<div v-if="isLoading" class="skeleton-overlay">
 			<div class="skeleton-wrapper">
@@ -30,13 +30,16 @@
 			</div>
 		</div>
 
-		<van-pull-refresh v-model="refreshing" @refresh="onRefresh">
-			<van-list
-				v-model:loading="loading"
-				:finished="finished"
-				@load="onLoad"
-				:immediate-check="true"
-			>
+		<div class="scroll-wrapper" ref="wrapper">
+			<div class="scroll-content">
+				<!-- 下拉刷新提示 -->
+				<div class="pulldown-wrapper" v-show="isPullingDown">
+					<div class="loading-icon">
+						<van-loading type="spinner" color="#1989fa" />
+					</div>
+					<div class="loading-text">正在刷新...</div>
+				</div>
+
 				<div class="waterfall-wrapper">
 					<div class="column" ref="leftColumn">
 						<div v-for="item in leftList" :key="item.id" class="waterfall-item">
@@ -56,8 +59,11 @@
 									class="video-content"
 									@loadedmetadata="onVideoLoad(item)"
 								></video>
-								<div class="play-overlay" v-show="!item.isPlaying">
+								<!-- <div class="play-overlay" v-show="!item.isPlaying">
 									<van-icon name="play-circle-o" size="48" color="#fff" />
+								</div> -->
+								<div class="custom-video-icon">
+									<div class="play-triangle"></div>
 								</div>
 							</div>
 							<div v-else class="image-container">
@@ -96,8 +102,12 @@
 									class="video-content"
 									@loadedmetadata="onVideoLoad(item)"
 								></video>
-								<div class="play-overlay" v-show="!item.isPlaying">
+								<!-- <div class="play-overlay" v-show="!item.isPlaying">
 									<van-icon name="play-circle-o" size="48" color="#fff" />
+								</div> -->
+								<!-- 添加右上角视频图标 -->
+								<div class="custom-video-icon">
+									<div class="play-triangle"></div>
 								</div>
 							</div>
 							<div v-else class="image-container">
@@ -115,25 +125,30 @@
 						</div>
 					</div>
 				</div>
-			</van-list>
-		</van-pull-refresh>
+
+				<!-- 上拉加载更多提示 -->
+				<div class="pullup-wrapper" v-show="isPullingUp">
+					<div class="loading-icon">
+						<van-loading type="spinner" color="#1989fa" />
+					</div>
+					<div class="loading-text">加载更多...</div>
+				</div>
+
+				<!-- 加载完成提示 -->
+				<div class="finished-tip" v-if="finished">没有更多内容了</div>
+			</div>
+		</div>
 	</div>
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick } from "vue";
+import { ref, onMounted, nextTick, onUnmounted } from "vue";
 import { fetchData } from "../api/waterfall";
-import {
-	Icon as VanIcon,
-	PullRefresh as VanPullRefresh,
-	List as VanList,
-	Loading as VanLoading,
-	Skeleton as VanSkeleton,
-} from "vant";
+import BScroll from "better-scroll";
+import { Icon as VanIcon, Loading as VanLoading } from "vant";
 
 const loading = ref(false);
 const finished = ref(false);
-const refreshing = ref(false);
 const leftList = ref([]);
 const rightList = ref([]);
 const page = ref(1);
@@ -143,6 +158,64 @@ const rightColumn = ref(null);
 const loadingItems = ref(new Set()); // 跟踪正在加载的项目
 const isLoading = ref(true); // 控制骨架屏显示
 const contentType = ref("mixed"); // 默认加载混合内容
+const wrapper = ref(null);
+const scroll = ref(null);
+const isPullingDown = ref(false);
+const isPullingUp = ref(false);
+
+// 初始化 BetterScroll
+const initScroll = () => {
+	if (scroll.value) {
+		scroll.value.destroy();
+	}
+
+	nextTick(() => {
+		if (!wrapper.value) return;
+
+		scroll.value = new BScroll(wrapper.value, {
+			click: true,
+			tap: true,
+			probeType: 3, // 实时监听滚动位置
+			pullDownRefresh: {
+				threshold: 70, // 下拉距离超过70px触发刷新
+				stop: 56, // 回弹停留位置
+			},
+			pullUpLoad: {
+				threshold: 90, // 上拉距离超过90px触发加载更多
+			},
+			bounce: true, // 回弹效果
+			scrollbar: true, // 显示滚动条
+		});
+
+		// 监听下拉刷新
+		scroll.value.on("pullingDown", async () => {
+			console.log("触发下拉刷新");
+			isPullingDown.value = true;
+			await onRefresh();
+			scroll.value.finishPullDown();
+			setTimeout(() => {
+				isPullingDown.value = false;
+				scroll.value.refresh();
+			}, 500);
+		});
+
+		// 监听上拉加载更多
+		scroll.value.on("pullingUp", async () => {
+			console.log("触发上拉加载更多");
+			if (finished.value) {
+				scroll.value.finishPullUp();
+				return;
+			}
+			isPullingUp.value = true;
+			await onLoad();
+			scroll.value.finishPullUp();
+			setTimeout(() => {
+				isPullingUp.value = false;
+				scroll.value.refresh();
+			}, 500);
+		});
+	});
+};
 
 // 智能分配内容到左右列
 const distributeContent = async (items) => {
@@ -273,6 +346,13 @@ const onLoad = async () => {
 				isLoading.value = false;
 			}, 300);
 		}
+
+		// 刷新 BetterScroll
+		nextTick(() => {
+			if (scroll.value) {
+				scroll.value.refresh();
+			}
+		});
 	} catch (error) {
 		console.error("加载数据失败:", error);
 		loading.value = false;
@@ -293,10 +373,15 @@ const onRefresh = async () => {
 		loadingItems.value.clear();
 		finished.value = false;
 		await onLoad();
-		refreshing.value = false;
+
+		// 刷新 BetterScroll
+		nextTick(() => {
+			if (scroll.value) {
+				scroll.value.refresh();
+			}
+		});
 	} catch (error) {
 		console.error("刷新数据失败:", error);
-		refreshing.value = false;
 		isLoading.value = false;
 	}
 };
@@ -337,6 +422,10 @@ const onImageLoad = (item) => {
 	// 对于没有预设宽高的图片，加载完成后重新计算
 	nextTick(() => {
 		rebalanceColumns();
+		// 刷新 BetterScroll
+		if (scroll.value) {
+			scroll.value.refresh();
+		}
 	});
 };
 
@@ -417,7 +506,24 @@ onMounted(() => {
 	}
 
 	onLoad();
+
+	// 初始化 BetterScroll
+	initScroll();
+
+	// 监听窗口大小变化，重新初始化滚动
+	window.addEventListener("resize", initScroll);
 });
+
+onUnmounted(() => {
+	// 销毁 BetterScroll 实例
+	if (scroll.value) {
+		scroll.value.destroy();
+	}
+
+	// 移除窗口大小变化监听
+	window.removeEventListener("resize", initScroll);
+});
+
 // 生成随机高度，模拟不同内容高度
 const getRandomHeight = () => {
 	// 生成60%到100%之间的随机高度
@@ -427,29 +533,57 @@ const getRandomHeight = () => {
 
 <style scoped>
 .waterfall-container {
-	padding: 10px;
-	box-sizing: border-box;
-	background: #f5f5f5;
-	/* 修改容器样式以确保正确的滚动行为 */
 	height: 100vh;
 	width: 100vw;
-	overflow-y: auto;
-	-webkit-overflow-scrolling: touch;
-	position: relative; /* 确保定位上下文正确 */
+	position: relative;
+	background: #f5f5f5;
+	overflow: hidden; /* 防止出现双滚动条 */
 }
 
-/* 添加加载更多提示样式 */
-.van-list__finished-text {
+.scroll-wrapper {
+	height: 100%;
+	width: 100%;
+	overflow: hidden; /* BetterScroll 需要外层容器 overflow: hidden */
+}
+
+.scroll-content {
+	padding: 10px;
+	box-sizing: border-box;
+}
+
+/* 下拉刷新样式 */
+.pulldown-wrapper {
+	width: 100%;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	padding: 10px 0;
+}
+
+/* 上拉加载更多样式 */
+.pullup-wrapper {
+	width: 100%;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	padding: 10px 0;
+}
+
+.loading-icon {
+	margin-right: 5px;
+}
+
+.loading-text {
+	font-size: 14px;
+	color: #969799;
+}
+
+.finished-tip {
+	width: 100%;
+	text-align: center;
 	padding: 16px;
 	color: #969799;
 	font-size: 14px;
-	text-align: center;
-}
-
-/* 添加下拉刷新样式 */
-:deep(.van-pull-refresh) {
-	overflow: visible;
-	height: 100%;
 }
 
 .waterfall-wrapper {
@@ -490,7 +624,7 @@ const getRandomHeight = () => {
 	left: 0;
 	width: 100%;
 	height: 100%;
-	object-fit: contain; /* 改回contain，保持原始比例 */
+	object-fit: contain; /* 保持原始比例 */
 }
 
 .image-container {
@@ -621,5 +755,28 @@ const getRandomHeight = () => {
 	100% {
 		background-position: 200% 0;
 	}
+}
+.custom-video-icon {
+	position: absolute;
+	top: 10px;
+	right: 10px;
+	width: 24px;
+	height: 24px;
+	background-color: rgba(0, 0, 0, 0.5);
+	border-radius: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 3;
+}
+
+/* 播放三角形图标 */
+.play-triangle {
+	width: 0;
+	height: 0;
+	border-style: solid;
+	border-width: 6px 0 6px 10px;
+	border-color: transparent transparent transparent #ffffff;
+	margin-left: 2px; /* 稍微向右偏移以视觉居中 */
 }
 </style>

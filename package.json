@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "better-scroll": "^2.5.1",
     "vant": "^4.9.19",
     "vue": "^3.5.13"
   },
